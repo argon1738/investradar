@@ -79,7 +79,7 @@ const App: React.FC = () => {
                 <StockChart data={history} />
               </div>
               <div className="bg-gray-800/50 p-6 rounded-2xl shadow-2xl border border-gray-700">
-                 <GeminiAnalysis stockName={selectedStock.name} />
+                 <GeminiAnalysis stock={selectedStock} />
               </div>
             </div>
           )}
