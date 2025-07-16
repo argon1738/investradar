@@ -1,38 +1,30 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { generateStockAnalysisStream } from '../services/geminiService';
 import { LoadingSpinnerIcon, SparklesIcon, LinkIcon } from './Icons';
-import { GroundingSource, Stock } from '../types';
+import { GroundingSource } from '../types';
 
 interface GeminiAnalysisProps {
-  stock: Stock | null;
+  stockName: string;
 }
 
-const quickPrompts = [
-    "Analyser konkurrenter",
-    "Vurder risiko",
-    "Fremtidsutsikter basert på nylige hendelser"
-];
-
-const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stock }) => {
-  const [customQuery, setCustomQuery] = useState<string>('');
+const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stockName }) => {
+  const [query, setQuery] = useState<string>('Gi meg en oversikt over nylige hendelser og markedssentiment.');
   const [analysis, setAnalysis] = useState<string>('');
   const [sources, setSources] = useState<GroundingSource[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastAnalyzedTicker, setLastAnalyzedTicker] = useState<string | null>(null);
   const analysisRef = useRef<HTMLDivElement>(null);
 
-  const runAnalysis = useCallback(async (prompt: string) => {
-    if (!stock) return;
-
+  const handleAnalysis = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setAnalysis('');
     setSources([]);
 
     try {
-      const stream = generateStockAnalysisStream(stock.name, prompt);
+      const stream = generateStockAnalysisStream(stockName, query);
       for await (const result of stream) {
         if (result.error) {
           setError(result.error);
@@ -42,6 +34,7 @@ const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stock }) => {
           setAnalysis(prev => prev + result.text);
         }
         if (result.sources) {
+          // Unngå duplikater
            setSources(prev => {
                 const newSources = result.sources ?? [];
                 const existingUris = new Set(prev.map(s => s.uri));
@@ -56,34 +49,16 @@ const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stock }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [stock]);
-
-  useEffect(() => {
-    // Automatically trigger analysis when a new stock is selected
-    if (stock && stock.ticker !== lastAnalyzedTicker) {
-        setLastAnalyzedTicker(stock.ticker);
-        runAnalysis('Gi meg en oversikt over nylige hendelser og markedssentiment.');
-    }
-  }, [stock, lastAnalyzedTicker, runAnalysis]);
+  }, [stockName, query]);
 
   useEffect(() => {
     if (analysisRef.current) {
-        let html = marked.parse(analysis) as string;
-        if (isLoading) {
-            // Append a blinking cursor while loading/streaming
-            html += '<span class="blinking-cursor">|</span>';
-        }
-        analysisRef.current.innerHTML = html;
+        const dirtyHtml = marked.parse(analysis) as string;
+        const cleanHtml = DOMPurify.sanitize(dirtyHtml);
+        analysisRef.current.innerHTML = cleanHtml;
     }
-  }, [analysis, isLoading]);
+  }, [analysis]);
 
-  const handleCustomQuerySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customQuery.trim()) {
-        runAnalysis(customQuery);
-        setCustomQuery('');
-    }
-  };
 
   return (
     <div>
@@ -91,24 +66,41 @@ const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stock }) => {
         <SparklesIcon className="w-6 h-6 mr-2 text-brand-accent" />
         AI-drevet Analyse
       </h2>
-
-      {(isLoading && !analysis) && (
-        <div className="flex items-center text-gray-400">
-            <LoadingSpinnerIcon />
-            <span className="ml-2">Starter analyse for {stock?.name}...</span>
-        </div>
-      )}
-      
-      <div 
-        ref={analysisRef} 
-        className="prose prose-invert prose-sm md:prose-base max-w-none prose-h3:text-brand-accent prose-h3:font-semibold prose-headings:text-gray-100"
-      />
+      <div className="space-y-4">
+        <textarea
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Still et spørsmål om aksjen..."
+          className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-accent transition duration-200 resize-none"
+          rows={2}
+          disabled={isLoading}
+        />
+        <button
+          onClick={handleAnalysis}
+          className="bg-brand-secondary hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed w-full md:w-auto"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <LoadingSpinnerIcon />
+              <span className="ml-2">Analyserer...</span>
+            </>
+          ) : (
+            'Generer Analyse'
+          )}
+        </button>
+      </div>
 
       {error && (
         <div className="mt-4 text-center bg-red-900/50 border border-negative text-negative px-4 py-3 rounded-lg">
           <p>{error}</p>
         </div>
       )}
+      
+      <div 
+        ref={analysisRef} 
+        className="mt-6 prose prose-invert prose-sm md:prose-base max-w-none prose-h3:text-brand-accent prose-h3:font-semibold prose-headings:text-gray-100"
+      />
 
       {sources.length > 0 && (
         <div className="mt-6">
@@ -131,42 +123,6 @@ const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stock }) => {
                 ))}
             </ul>
         </div>
-      )}
-
-      {/* Follow-up questions section */}
-      {!isLoading && analysis && (
-         <div className="mt-8 border-t border-gray-700 pt-6">
-            <h3 className="text-lg font-semibold mb-3 text-gray-300">Still et oppfølgingsspørsmål</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-                {quickPrompts.map(prompt => (
-                    <button 
-                        key={prompt}
-                        onClick={() => runAnalysis(prompt)}
-                        disabled={isLoading}
-                        className="bg-gray-700 hover:bg-gray-600 text-sm text-gray-200 font-medium py-1.5 px-3 rounded-full transition duration-200 disabled:bg-gray-800 disabled:text-gray-500"
-                    >
-                        {prompt}
-                    </button>
-                ))}
-            </div>
-            <form onSubmit={handleCustomQuerySubmit} className="flex gap-2">
-                <input
-                    type="text"
-                    value={customQuery}
-                    onChange={(e) => setCustomQuery(e.target.value)}
-                    placeholder="Eller skriv ditt eget spørsmål her..."
-                    className="flex-grow bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-accent transition duration-200"
-                    disabled={isLoading}
-                />
-                <button
-                    type="submit"
-                    className="bg-brand-secondary hover:bg-brand-accent text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition duration-200 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                    disabled={isLoading || !customQuery.trim()}
-                >
-                   <SparklesIcon className="w-5 h-5 mr-2"/> Spør
-                </button>
-            </form>
-         </div>
       )}
 
     </div>
