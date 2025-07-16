@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="En AI-drevet applikasjon for å analysere aksjer fra Oslo Børs med sanntidsdata og nyhetsanalyse." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300A3E0' stroke-width='1.5'><path stroke-linecap='round' stroke-linejoin='round' d='M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941' /></svg>" />
     <title>InvestRadar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -20,33 +22,31 @@
         }
       }
     </script>
-    <style>
-      @keyframes blink {
-        50% { opacity: 0; }
-      }
-      .blinking-cursor {
-        animation: blink 1s step-start infinite;
-        font-weight: bold;
-        margin-left: 2px;
-        display: inline-block; /* Ensures proper alignment */
-      }
-    </style>
   <script type="importmap">
 {
   "imports": {
-    "marked": "https://esm.sh/marked@^16.0.0",
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "react": "https://esm.sh/react@^19.1.0",
+    "react": "https://esm.sh/react@19.1.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.1.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.9.0",
+    "recharts": "https://esm.sh/recharts@3.1.0",
+    "marked": "https://esm.sh/marked@13.0.1",
     "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.9.0",
-    "recharts": "https://esm.sh/recharts@^3.1.0",
+    "react/": "https://esm.sh/react@^19.1.0/",
     "@netlify/functions": "https://esm.sh/@netlify/functions@^4.1.11"
   }
 }
 </script>
 </head>
   <body class="bg-gray-900 text-gray-100">
+    <noscript>
+      <div style="background-color: #111827; color: #f3f4f6; position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; text-align: center; font-family: sans-serif; z-index: 9999;">
+        <div style="padding: 2rem;">
+          <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">JavaScript er påkrevd</h1>
+          <p>Denne applikasjonen krever JavaScript for å fungere. Vennligst aktiver JavaScript i nettleseren din og last siden på nytt.</p>
+        </div>
+      </div>
+    </noscript>
     <div id="root"></div>
-    <script type="module" src="/bundle.js"></script>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
