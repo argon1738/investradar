@@ -1,13 +1,12 @@
 [build]
-  # This empty command tells Netlify there's no build step,
-  # which resolves the "npm run build command is missing" error.
-  command = ""
+  # This command runs the script from package.json to prepare the site.
+  command = "npm run build"
   
   # The directory containing the deploy-ready assets of your site.
-  # Since we don't have a frontend build step, this points to the root.
-  publish = "/"
+  # This now points to the 'dist' folder created by the build command.
+  publish = "dist"
 
-  # The directory containing serverless functions.
+  # The directory containing serverless functions remains the same.
   functions = "api/"
 
 [build.environment]
@@ -16,10 +15,6 @@
 
 # Rewrite rule to proxy API calls to Netlify Functions.
 [[redirects]]
-  # Match all requests starting with /api/
   from = "/api/*"
-  # And redirect them to the corresponding Netlify Function.
-  # :splat is a placeholder for the wildcard.
   to = "/.netlify/functions/:splat"
-  # Status 200 indicates a successful rewrite (not a redirect).
   status = 200
