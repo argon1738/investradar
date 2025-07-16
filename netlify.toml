@@ -1,0 +1,17 @@
+[build]
+  # Katalogen som inneholder de ferdigbygde filene for nettstedet.
+  # Siden vi ikke har et byggesteg for frontend, peker vi til roten hvor index.html ligger.
+  publish = "/"
+
+  # Katalogen som inneholder serverless-funksjonene.
+  functions = "api/"
+
+# Omskrivningsregler for å sende API-kall til Netlify Functions.
+[[redirects]]
+  # Alle forespørsler som starter med /api/...
+  from = "/api/*"
+  # skal sendes til den tilsvarende Netlify-funksjonen.
+  # :splat er en plassholder for alt som matcher *.
+  to = "/.netlify/functions/:splat"
+  # Status 200 indikerer en vellykket omskrivning (ikke en videresending).
+  status = 200
