@@ -67,8 +67,7 @@ export const handler: Handler = async (event, context) => {
 
         return {
             statusCode: 200,
-            // @ts-ignore
-            body: readableStream,
+            body: readableStream as any,
             headers: {
                 'Content-Type': 'application/json; charset=utf-8',
                 'X-Content-Type-Options': 'nosniff',
