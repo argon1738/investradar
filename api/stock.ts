@@ -1,6 +1,15 @@
 import type { Handler } from '@netlify/functions';
 import { Stock, PriceDataPoint } from '../types';
 
+// Interface for a single day's data from Alpha Vantage Time Series
+interface AlphaVantageDailyValue {
+    '1. open': string;
+    '2. high': string;
+    '3. low': string;
+    '4. close': string;
+    '5. volume': string;
+}
+
 const fetchJson = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
@@ -66,7 +75,7 @@ export const handler: Handler = async (event, context) => {
         }
 
         const history: PriceDataPoint[] = Object.entries(dailyData)
-            .map(([dateStr, values]: [string, any]) => ({
+            .map(([dateStr, values]: [string, AlphaVantageDailyValue]) => ({
                 date: new Date(dateStr).toLocaleDateString('no-NO', { day: '2-digit', month: 'short' }),
                 price: parseFloat(values['4. close']),
             }))
