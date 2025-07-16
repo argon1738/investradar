@@ -1,39 +1,13 @@
-import { stream, type HandlerEvent, type HandlerContext } from '@netlify/functions';
+import type { Handler } from '@netlify/functions';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { Readable } from 'stream';
 
-// Async generator function to process the stream from Gemini
-async function* processGeminiStream(responseStream: AsyncIterable<GenerateContentResponse>) {
-    let finalResponse: GenerateContentResponse | null = null;
-    for await (const chunk of responseStream) {
-        finalResponse = chunk;
-        const textChunk = { text: chunk.text };
-        yield JSON.stringify(textChunk) + '__END_OF_OBJECT__';
-    }
-
-    if (finalResponse) {
-        const groundingMetadata = finalResponse.candidates?.[0]?.groundingMetadata;
-        if(groundingMetadata?.groundingChunks) {
-           const sources = groundingMetadata.groundingChunks
-               .map(chunk => chunk.web)
-               .filter((web): web is { uri: string; title: string } => !!web && !!web.uri && !!web.title)
-               .map(source => ({ uri: source.uri, title: source.title || "Ukjent tittel" }))
-               .filter((value, index, self) => self.findIndex(s => s.uri === value.uri) === index);
-           
-           if (sources.length > 0) {
-               const sourcesChunk = { sources };
-               yield JSON.stringify(sourcesChunk) + '__END_OF_OBJECT__';
-           }
-        }
-    }
-}
-
-export const handler = stream(async (event: HandlerEvent, context: HandlerContext) => {
+export const handler: Handler = async (event, context) => {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
-    if (!process.env.API_KEY) {
+    const API_KEY = process.env.API_KEY;
+    if (!API_KEY) {
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'API key is not configured on the server.' }),
@@ -50,7 +24,7 @@ export const handler = stream(async (event: HandlerEvent, context: HandlerContex
             };
         }
 
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         const prompt = `Gjennomfør en finansiell analyse for selskapet "${stockName}". Fokuser på de siste nyhetene, markedssentiment, og viktige hendelser som kan påvirke aksjekursen. Baser analysen din KUN på resultatene fra Google Search. Strukturer svaret ditt i Markdown-format med overskrifter for lesbarhet. Start med et kort sammendrag. Avslutt analysen med en ansvarsfraskrivelse om at dette ikke er finansiell rådgivning. Brukerspørsmål å vurdere: "${userQuery}"`;
 
         const responseStream = await ai.models.generateContentStream({
@@ -62,16 +36,44 @@ export const handler = stream(async (event: HandlerEvent, context: HandlerContex
             },
         });
         
-        const transformedStream = processGeminiStream(responseStream);
-        const body = Readable.from(transformedStream);
+        const encoder = new TextEncoder();
+        const readableStream = new ReadableStream({
+            async start(controller) {
+                let finalResponse: GenerateContentResponse | null = null;
+                for await (const chunk of responseStream) {
+                    finalResponse = chunk;
+                    const textChunk = { text: chunk.text };
+                    controller.enqueue(encoder.encode(JSON.stringify(textChunk) + '__END_OF_OBJECT__'));
+                }
+
+                if (finalResponse) {
+                    const groundingMetadata = finalResponse.candidates?.[0]?.groundingMetadata;
+                    if(groundingMetadata?.groundingChunks) {
+                       const sources = groundingMetadata.groundingChunks
+                           .map(chunk => chunk.web)
+                           .filter((web): web is { uri: string; title: string } => !!web && !!web.uri && !!web.title)
+                           .map(source => ({ uri: source.uri, title: source.title || "Ukjent tittel" }))
+                           .filter((value, index, self) => self.findIndex(s => s.uri === value.uri) === index);
+                       
+                       if (sources.length > 0) {
+                           const sourcesChunk = { sources };
+                           controller.enqueue(encoder.encode(JSON.stringify(sourcesChunk) + '__END_OF_OBJECT__'));
+                       }
+                    }
+                }
+                controller.close();
+            },
+        });
 
         return {
             statusCode: 200,
-            body: body,
+            // @ts-ignore
+            body: readableStream,
             headers: {
                 'Content-Type': 'application/json; charset=utf-8',
                 'X-Content-Type-Options': 'nosniff',
             },
+            isBase64Encoded: false
         };
 
     } catch (error) {
@@ -81,4 +83,4 @@ export const handler = stream(async (event: HandlerEvent, context: HandlerContex
             body: JSON.stringify({ error: "An error occurred on the server while generating the analysis." }),
         };
     }
-});
+};
