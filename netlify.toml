@@ -1,4 +1,8 @@
 [build]
+  # Denne tomme kommandoen forteller Netlify at det ikke er noe byggesteg,
+  # noe som løser feilen "npm run build command is missing".
+  command = ""
+  
   # Katalogen som inneholder de ferdigbygde filene for nettstedet.
   # Siden vi ikke har et byggesteg for frontend, peker vi til roten hvor index.html ligger.
   publish = "/"
