@@ -37,6 +37,14 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const popularStocks = [
+    { ticker: 'EQNR.OL', name: 'Equinor' },
+    { ticker: 'DNB.OL', name: 'DNB' },
+    { ticker: 'NHY.OL', name: 'Norsk Hydro' },
+    { ticker: 'TEL.OL', name: 'Telenor' },
+    { ticker: 'MOWI.OL', name: 'Mowi' },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 font-sans">
       <header className="bg-brand-primary p-4 shadow-lg border-b-4 border-brand-accent">
@@ -55,6 +63,21 @@ const App: React.FC = () => {
           </p>
           <StockSearch onSearch={handleSearch} isLoading={isLoading} />
           
+          <div className="mt-6 text-center">
+              <div className="flex flex-wrap gap-3 justify-center">
+                  {popularStocks.map(stock => (
+                      <button 
+                          key={stock.ticker}
+                          onClick={() => handleSearch(stock.ticker)}
+                          disabled={isLoading}
+                          className="bg-gray-800 border border-gray-700 text-gray-300 px-4 py-1.5 rounded-full text-sm hover:bg-brand-secondary hover:text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                          {stock.name}
+                      </button>
+                  ))}
+              </div>
+          </div>
+
           {isLoading && (
             <div className="flex justify-center items-center mt-8">
               <LoadingSpinnerIcon />
@@ -79,14 +102,14 @@ const App: React.FC = () => {
                 <StockChart data={history} />
               </div>
               <div className="bg-gray-800/50 p-6 rounded-2xl shadow-2xl border border-gray-700">
-                 <GeminiAnalysis stock={selectedStock} />
+                 <GeminiAnalysis stockName={selectedStock.name} />
               </div>
             </div>
           )}
            {!selectedStock && !isLoading && !error && (
-            <div className="text-center mt-16 text-gray-500">
+            <div className="text-center mt-12 text-gray-500">
                 <p className="text-lg">Velkommen til AI-drevet aksjeanalyse.</p>
-                <p>Start med å søke etter en aksje ovenfor.</p>
+                <p>Start med å søke etter en aksje, eller velg en av de populære aksjene for å begynne.</p>
             </div>
            )}
         </div>
