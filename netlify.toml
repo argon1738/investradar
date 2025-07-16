@@ -1,21 +1,25 @@
 [build]
-  # Denne tomme kommandoen forteller Netlify at det ikke er noe byggesteg,
-  # noe som løser feilen "npm run build command is missing".
+  # This empty command tells Netlify there's no build step,
+  # which resolves the "npm run build command is missing" error.
   command = ""
   
-  # Katalogen som inneholder de ferdigbygde filene for nettstedet.
-  # Siden vi ikke har et byggesteg for frontend, peker vi til roten hvor index.html ligger.
+  # The directory containing the deploy-ready assets of your site.
+  # Since we don't have a frontend build step, this points to the root.
   publish = "/"
 
-  # Katalogen som inneholder serverless-funksjonene.
+  # The directory containing serverless functions.
   functions = "api/"
 
-# Omskrivningsregler for å sende API-kall til Netlify Functions.
+[build.environment]
+  # Lock the Node.js version to a stable LTS version to ensure consistent builds.
+  NODE_VERSION = "20"
+
+# Rewrite rule to proxy API calls to Netlify Functions.
 [[redirects]]
-  # Alle forespørsler som starter med /api/...
+  # Match all requests starting with /api/
   from = "/api/*"
-  # skal sendes til den tilsvarende Netlify-funksjonen.
-  # :splat er en plassholder for alt som matcher *.
+  # And redirect them to the corresponding Netlify Function.
+  # :splat is a placeholder for the wildcard.
   to = "/.netlify/functions/:splat"
-  # Status 200 indikerer en vellykket omskrivning (ikke en videresending).
+  # Status 200 indicates a successful rewrite (not a redirect).
   status = 200
