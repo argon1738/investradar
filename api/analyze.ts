@@ -6,11 +6,11 @@ export const handler: Handler = async (event, context) => {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
+    const API_KEY = process.env.API_KEY;
+    if (!API_KEY) {
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Gemini API key is not configured on the server.' }),
+            body: JSON.stringify({ error: 'API key is not configured on the server.' }),
         };
     }
 
@@ -24,7 +24,7 @@ export const handler: Handler = async (event, context) => {
             };
         }
 
-        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         const prompt = `Gjennomfør en finansiell analyse for selskapet "${stockName}". Fokuser på de siste nyhetene, markedssentiment, og viktige hendelser som kan påvirke aksjekursen. Baser analysen din KUN på resultatene fra Google Search. Strukturer svaret ditt i Markdown-format med overskrifter for lesbarhet. Start med et kort sammendrag. Avslutt analysen med en ansvarsfraskrivelse om at dette ikke er finansiell rådgivning. Brukerspørsmål å vurdere: "${userQuery}"`;
 
         const responseStream = await ai.models.generateContentStream({
