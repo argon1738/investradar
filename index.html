@@ -20,6 +20,17 @@
         }
       }
     </script>
+    <style>
+      @keyframes blink {
+        50% { opacity: 0; }
+      }
+      .blinking-cursor {
+        animation: blink 1s step-start infinite;
+        font-weight: bold;
+        margin-left: 2px;
+        display: inline-block; /* Ensures proper alignment */
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
@@ -34,7 +45,6 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-gray-900 text-gray-100">
     <div id="root"></div>
