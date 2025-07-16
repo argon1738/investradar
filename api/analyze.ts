@@ -1,7 +1,34 @@
-import type { Handler } from '@netlify/functions';
+import { stream, type HandlerEvent, type HandlerContext } from '@netlify/functions';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { Readable } from 'stream';
 
-export const handler: Handler = async (event, context) => {
+// Async generator function to process the stream from Gemini
+async function* processGeminiStream(responseStream: AsyncIterable<GenerateContentResponse>) {
+    let finalResponse: GenerateContentResponse | null = null;
+    for await (const chunk of responseStream) {
+        finalResponse = chunk;
+        const textChunk = { text: chunk.text };
+        yield JSON.stringify(textChunk) + '__END_OF_OBJECT__';
+    }
+
+    if (finalResponse) {
+        const groundingMetadata = finalResponse.candidates?.[0]?.groundingMetadata;
+        if(groundingMetadata?.groundingChunks) {
+           const sources = groundingMetadata.groundingChunks
+               .map(chunk => chunk.web)
+               .filter((web): web is { uri: string; title: string } => !!web && !!web.uri && !!web.title)
+               .map(source => ({ uri: source.uri, title: source.title || "Ukjent tittel" }))
+               .filter((value, index, self) => self.findIndex(s => s.uri === value.uri) === index);
+           
+           if (sources.length > 0) {
+               const sourcesChunk = { sources };
+               yield JSON.stringify(sourcesChunk) + '__END_OF_OBJECT__';
+           }
+        }
+    }
+}
+
+export const handler = stream(async (event: HandlerEvent, context: HandlerContext) => {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
@@ -35,44 +62,16 @@ export const handler: Handler = async (event, context) => {
             },
         });
         
-        const encoder = new TextEncoder();
-        const readableStream = new ReadableStream({
-            async start(controller) {
-                let finalResponse: GenerateContentResponse | null = null;
-                for await (const chunk of responseStream) {
-                    finalResponse = chunk;
-                    const textChunk = { text: chunk.text };
-                    controller.enqueue(encoder.encode(JSON.stringify(textChunk) + '__END_OF_OBJECT__'));
-                }
-
-                if (finalResponse) {
-                    const groundingMetadata = finalResponse.candidates?.[0]?.groundingMetadata;
-                    if(groundingMetadata?.groundingChunks) {
-                       const sources = groundingMetadata.groundingChunks
-                           .map(chunk => chunk.web)
-                           .filter((web): web is { uri: string; title: string } => !!web && !!web.uri && !!web.title)
-                           .map(source => ({ uri: source.uri, title: source.title || "Ukjent tittel" }))
-                           .filter((value, index, self) => self.findIndex(s => s.uri === value.uri) === index);
-                       
-                       if (sources.length > 0) {
-                           const sourcesChunk = { sources };
-                           controller.enqueue(encoder.encode(JSON.stringify(sourcesChunk) + '__END_OF_OBJECT__'));
-                       }
-                    }
-                }
-                controller.close();
-            },
-        });
+        const transformedStream = processGeminiStream(responseStream);
+        const body = Readable.from(transformedStream);
 
         return {
             statusCode: 200,
-            // @ts-ignore
-            body: readableStream,
+            body: body,
             headers: {
                 'Content-Type': 'application/json; charset=utf-8',
                 'X-Content-Type-Options': 'nosniff',
             },
-            isBase64Encoded: false
         };
 
     } catch (error) {
@@ -82,4 +81,4 @@ export const handler: Handler = async (event, context) => {
             body: JSON.stringify({ error: "An error occurred on the server while generating the analysis." }),
         };
     }
-};
+});
