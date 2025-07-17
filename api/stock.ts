@@ -4,7 +4,7 @@ import { Stock, PriceDataPoint } from '../types';
 const fetchJson = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        throw new Error(`API request failed with status ${response.status} for url: ${url}`);
     }
     const data = await response.json();
     if (data['Error Message'] || data.Information) { // Information key often contains rate limit errors
@@ -15,7 +15,6 @@ const fetchJson = async (url: string) => {
     }
     return data;
 };
-
 
 export const handler: Handler = async (event, context) => {
     const ticker = event.queryStringParameters?.ticker;
@@ -36,20 +35,21 @@ export const handler: Handler = async (event, context) => {
     }
 
     const BASE_URL = 'https://www.alphavantage.co/query';
+    const overviewUrl = `${BASE_URL}?function=OVERVIEW&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`;
+    const quoteUrl = `${BASE_URL}?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`;
+    const timeSeriesUrl = `${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${ALPHAVANTAGE_API_KEY}`;
 
     try {
-        // Fetch data sequentially to avoid hitting API rate limits
-        const overview = await fetchJson(`${BASE_URL}?function=OVERVIEW&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`);
-        const quote = await fetchJson(`${BASE_URL}?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`);
-        const timeSeries = await fetchJson(`${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${ALPHAVANTAGE_API_KEY}`);
+        // Fetch all data in parallel to reduce total execution time and avoid timeouts.
+        const [overview, quote, timeSeries] = await Promise.all([
+            fetchJson(overviewUrl),
+            fetchJson(quoteUrl),
+            fetchJson(timeSeriesUrl)
+        ]);
         
         const globalQuote = quote['Global Quote'];
         if (!globalQuote || Object.keys(globalQuote).length === 0) {
-            // Check for rate limit info in the quote response specifically
-            if(quote.Information) {
-                throw new Error(quote.Information);
-            }
-            throw new Error(`No data found for ticker '${ticker}'. It might be an invalid symbol.`);
+            throw new Error(`No quote data found for ticker '${ticker}'. It might be an invalid symbol.`);
         }
 
         const stock: Stock = {
@@ -65,10 +65,6 @@ export const handler: Handler = async (event, context) => {
 
         const dailyData = timeSeries['Time Series (Daily)'];
          if (!dailyData) {
-            // Check for rate limit info in the timeSeries response
-            if(timeSeries.Information) {
-                 throw new Error(timeSeries.Information);
-            }
             throw new Error(`Could not fetch historical data for '${ticker}'.`);
         }
 
@@ -90,7 +86,7 @@ export const handler: Handler = async (event, context) => {
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
         
         // Provide a more user-friendly message for rate limit errors
-        if (errorMessage.includes('rate limit') || errorMessage.includes('API call frequency')) {
+        if (errorMessage.toLowerCase().includes('api call frequency')) {
              return {
                 statusCode: 429, // Too Many Requests
                 body: JSON.stringify({ error: 'API-grensen er nådd. Vennligst vent et minutt og prøv igjen.' }),
