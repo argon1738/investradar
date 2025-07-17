@@ -1,11 +1,30 @@
 {
-  "name": "investradar-serverless-functions",
+  "name": "investradar-app",
+  "private": true,
   "version": "1.0.0",
-  "description": "Server-side functions for the InvestRadar application. This file specifies only the dependencies needed for the API routes.",
+  "type": "module",
   "scripts": {
-    "build": "echo 'No build step required for this project.'"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.9.0"
+    "@google/genai": "^1.9.0",
+    "dompurify": "^3.1.6",
+    "marked": "^13.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3"
   }
 }
