@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Server-side functions for the InvestRadar application. This file specifies only the dependencies needed for the API routes.",
   "dependencies": {
-    "@google/genai": "^0.14.0",
-    "@netlify/functions": "^2.6.0"
+    "@google/genai": "^0.14.0"
   }
 }
