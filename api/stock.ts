@@ -1,6 +1,5 @@
-import { Stock, PriceDataPoint } from '../types';
+import { Stock, PriceDataPoint } from '../src/types'; // Korrigert sti
 
-// En mer robust hjelpefunksjon som kun sjekker for faktiske feilmeldinger fra API-et.
 const fetchJson = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
@@ -8,10 +7,8 @@ const fetchJson = async (url: string) => {
     }
     const data = await response.json();
     
-    // Sjekker for eksplisitte feilmeldinger fra Alpha Vantage.
     if (data['Error Message'] || data.Information) {
         const errorMessage = data['Error Message'] || data.Information || 'Invalid API response';
-        // Oppretter en spesifikk feiltype for rate limiting for bedre håndtering.
         if (errorMessage.toLowerCase().includes('api call frequency')) {
             const error = new Error(errorMessage);
             error.name = 'RateLimitError';
@@ -22,7 +19,6 @@ const fetchJson = async (url: string) => {
     return data;
 };
 
-// Hjelpefunksjon for å lage standardiserte JSON-svar.
 const jsonResponse = (data: any, status = 200) => {
     return new Response(JSON.stringify(data), {
         headers: { 'Content-Type': 'application/json' },
@@ -55,24 +51,19 @@ export default async (request: Request) => {
             fetchJson(timeSeriesUrl)
         ]);
         
-        // --- Start på forbedrede, spesifikke sjekker ---
-
         const globalQuote = quote['Global Quote'];
         if (!globalQuote || Object.keys(globalQuote).length === 0) {
             return jsonResponse({ error: `Ingen kursdata funnet for ticker '${ticker}'. Symbolet kan være ugyldig.` }, 404);
         }
-
+        
         const dailyData = timeSeries['Time Series (Daily)'];
         if (!dailyData) {
             return jsonResponse({ error: `Kunne ikke hente historiske data for '${ticker}'.` }, 404);
         }
         
-        // Spesifikk sjekk for selskapsdata, som kan mangle for noen symboler.
         if (!overview || !overview.Symbol || !overview.Name) {
             return jsonResponse({ error: `Kunne ikke hente selskapsoversikt for '${ticker}'. Symbolet kan være delistet eller ugyldig.` }, 404);
         }
-
-        // --- Slutt på forbedrede sjekker ---
 
         const stock: Stock = {
             ticker: overview.Symbol,
@@ -80,8 +71,8 @@ export default async (request: Request) => {
             price: parseFloat(globalQuote['05. price']),
             change: parseFloat(globalQuote['09. change']),
             changePercent: parseFloat(globalQuote['10. change percent'].replace('%', '')),
-            marketCap: parseInt(overview.MarketCapitalization, 10) || 0, // Fallback til 0 hvis data mangler
-            volume: parseInt(globalQuote['06. volume'], 10) || 0, // Fallback til 0
+            marketCap: parseInt(overview.MarketCapitalization, 10) || 0,
+            volume: parseInt(globalQuote['06. volume'], 10) || 0,
             currency: overview.Currency || 'NOK',
         };
 
