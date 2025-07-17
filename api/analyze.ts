@@ -12,8 +12,7 @@ export default async (request: Request) => {
         return new Response('Method Not Allowed', { status: 405 });
     }
 
-    // Use the correct environment variable name as configured in Netlify
-    const API_KEY = process.env.GEMINI_API_KEY; 
+    const API_KEY = process.env.API_KEY; 
     if (!API_KEY) {
         return jsonResponse({ error: 'API key is not configured on the server.' }, 500);
     }
