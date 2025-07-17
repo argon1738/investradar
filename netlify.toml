@@ -1,18 +1,9 @@
-# Netlify-konfigurasjonsfil
-
 [build]
-  # Denne kommandoen gjør ingenting, men tilfredsstiller Netlifys krav til en byggekommando.
   command = "npm run build"
-  
-  # Mappen som skal publiseres, som er rotmappen til prosjektet.
-  # Dette fikser "Deploy directory 'dist' does not exist"-feilen.
   publish = "."
-  
-  # Mappen der serverless-funksjonene dine er lokalisert.
   functions = "api"
 
 [[redirects]]
-  # Omdirigerer alle API-kall fra klienten til Netlify-funksjonene.
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
