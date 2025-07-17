@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { generateStockAnalysisStream } from '../services/geminiService.ts'; // Endring her
+import { generateStockAnalysisStream } from '../services/analysisService.ts'; // Endret
 import { LoadingSpinnerIcon, SparklesIcon, LinkIcon } from './Icons';
 import { GroundingSource } from '../types';
 
@@ -34,7 +34,6 @@ const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stockName }) => {
           setAnalysis(prev => prev + result.text);
         }
         if (result.sources) {
-          // Unngå duplikater
            setSources(prev => {
                 const newSources = result.sources ?? [];
                 const existingUris = new Set(prev.map(s => s.uri));
