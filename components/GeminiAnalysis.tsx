@@ -97,12 +97,14 @@ const GeminiAnalysis: React.FC<GeminiAnalysisProps> = ({ stockName }) => {
         </div>
       )}
       
-      <div 
-        ref={analysisRef} 
-        className="mt-6 prose prose-invert prose-sm md:prose-base max-w-none prose-h3:text-brand-accent prose-h3:font-semibold prose-headings:text-gray-100"
-      />
+      {analysis && (
+        <div 
+          ref={analysisRef} 
+          className="mt-6 prose prose-invert prose-sm md:prose-base max-w-none prose-h3:text-brand-accent prose-h3:font-semibold prose-headings:text-gray-100"
+        />
+      )}
 
-      {sources.length > 0 && (
+      {!isLoading && sources.length > 0 && (
         <div className="mt-6">
             <h3 className="text-lg font-semibold mb-3 text-gray-300 flex items-center">
                 <LinkIcon className="mr-2"/>
