@@ -8,20 +8,14 @@ export const handler: Handler = async (event, context) => {
 
     const API_KEY = process.env.API_KEY;
     if (!API_KEY) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'API key is not configured on the server.' }),
-        };
+        return new Response(JSON.stringify({ error: 'API key is not configured on the server.' }), { status: 500, headers: { 'Content-Type': 'application/json' }});
     }
 
     try {
         const { stockName, userQuery } = JSON.parse(event.body || '{}');
 
         if (!stockName || !userQuery) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ error: 'Missing stockName or userQuery in request body.' }),
-            };
+            return new Response(JSON.stringify({ error: 'Missing stockName or userQuery in request body.' }), { status: 400, headers: { 'Content-Type': 'application/json' }});
         }
 
         const ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -65,22 +59,19 @@ export const handler: Handler = async (event, context) => {
             },
         });
 
-        return {
-            statusCode: 200,
-            // @ts-ignore
-            body: readableStream,
-            headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-                'X-Content-Type-Options': 'nosniff',
-            },
-            isBase64Encoded: false
+        const headers = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-Content-Type-Options': 'nosniff',
         };
+
+        return new Response(readableStream, {
+            status: 200,
+            headers: headers,
+        });
+
 
     } catch (error) {
         console.error("Gemini API error in function:", error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "An error occurred on the server while generating the analysis." }),
-        };
+        return new Response(JSON.stringify({ error: "An error occurred on the server while generating the analysis." }), { status: 500, headers: { 'Content-Type': 'application/json' }});
     }
 };
