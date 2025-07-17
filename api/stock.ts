@@ -1,4 +1,3 @@
-import type { Handler } from '@netlify/functions';
 import { Stock, PriceDataPoint } from '../types';
 
 const fetchJson = async (url: string) => {
@@ -8,7 +7,14 @@ const fetchJson = async (url: string) => {
     }
     const data = await response.json();
     if (data['Error Message'] || data.Information) { // Information key often contains rate limit errors
-        throw new Error(data['Error Message'] || data.Information || 'Invalid API response');
+        const errorMessage = data['Error Message'] || data.Information || 'Invalid API response';
+        // Create a specific error type for rate limiting
+        if (errorMessage.toLowerCase().includes('api call frequency')) {
+            const error = new Error(errorMessage);
+            error.name = 'RateLimitError';
+            throw error;
+        }
+        throw new Error(errorMessage);
     }
     if (Object.keys(data).length === 0) {
         throw new Error('Received an empty response from the API.');
@@ -16,22 +22,24 @@ const fetchJson = async (url: string) => {
     return data;
 };
 
-export const handler: Handler = async (event, context) => {
-    const ticker = event.queryStringParameters?.ticker;
+const jsonResponse = (data: any, status = 200) => {
+    return new Response(JSON.stringify(data), {
+        headers: { 'Content-Type': 'application/json' },
+        status: status,
+    });
+};
+
+export default async (request: Request) => {
+    const url = new URL(request.url);
+    const ticker = url.searchParams.get('ticker');
     const ALPHAVANTAGE_API_KEY = process.env.ALPHAVANTAGE_API_KEY;
 
     if (!ALPHAVANTAGE_API_KEY) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Alpha Vantage API key is not configured on the server.' }),
-        };
+        return jsonResponse({ error: 'Alpha Vantage API key is not configured on the server.' }, 500);
     }
 
     if (!ticker) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: 'Ticker symbol is required.' }),
-        };
+        return jsonResponse({ error: 'Ticker symbol is required.' }, 400);
     }
 
     const BASE_URL = 'https://www.alphavantage.co/query';
@@ -40,7 +48,6 @@ export const handler: Handler = async (event, context) => {
     const timeSeriesUrl = `${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${ALPHAVANTAGE_API_KEY}`;
 
     try {
-        // Fetch all data in parallel to reduce total execution time and avoid timeouts.
         const [overview, quote, timeSeries] = await Promise.all([
             fetchJson(overviewUrl),
             fetchJson(quoteUrl),
@@ -49,7 +56,7 @@ export const handler: Handler = async (event, context) => {
         
         const globalQuote = quote['Global Quote'];
         if (!globalQuote || Object.keys(globalQuote).length === 0) {
-            throw new Error(`No quote data found for ticker '${ticker}'. It might be an invalid symbol.`);
+            return jsonResponse({ error: `No quote data found for ticker '${ticker}'. It might be an invalid symbol.` }, 404);
         }
 
         const stock: Stock = {
@@ -64,8 +71,8 @@ export const handler: Handler = async (event, context) => {
         };
 
         const dailyData = timeSeries['Time Series (Daily)'];
-         if (!dailyData) {
-            throw new Error(`Could not fetch historical data for '${ticker}'.`);
+        if (!dailyData) {
+            return jsonResponse({ error: `Could not fetch historical data for '${ticker}'.` }, 404);
         }
 
         const history: PriceDataPoint[] = Object.entries(dailyData)
@@ -75,27 +82,16 @@ export const handler: Handler = async (event, context) => {
             }))
             .reverse();
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ stock, history }),
-            headers: { 'Content-Type': 'application/json' }
-        };
+        return jsonResponse({ stock, history });
 
     } catch (error) {
         console.error("API error:", error);
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
         
-        // Provide a more user-friendly message for rate limit errors
-        if (errorMessage.toLowerCase().includes('api call frequency')) {
-             return {
-                statusCode: 429, // Too Many Requests
-                body: JSON.stringify({ error: 'API-grensen er nådd. Vennligst vent et minutt og prøv igjen.' }),
-            };
+        if (error instanceof Error && error.name === 'RateLimitError') {
+            return jsonResponse({ error: 'API-grensen er nådd. Vennligst vent et minutt og prøv igjen.' }, 429);
         }
 
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: errorMessage }),
-        };
+        return jsonResponse({ error: errorMessage }, 500);
     }
 };
