@@ -17,8 +17,6 @@ const MainApp: React.FC = () => {
     if (!ticker) return;
     setIsLoading(true);
     setError(null);
-    setSelectedStock(null);
-    setHistory([]);
     try {
       const formattedTicker = ticker.toUpperCase().endsWith('.OL') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.OL`;
       const { stock, history } = await fetchStockData(formattedTicker);
