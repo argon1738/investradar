@@ -1,5 +1,6 @@
 {
   "name": "InvestRadar",
   "description": "En applikasjon som bruker AI for å analysere aksjer, inkludert sanntidsanalyse og historiske data.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "prompt": ""
 }

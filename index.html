@@ -4,39 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>InvestRadar</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'brand-primary': '#002855',
-              'brand-secondary': '#004385',
-              'brand-accent': '#00A3E0',
-              'positive': '#22c55e',
-              'negative': '#ef4444',
-            }
-          }
-        }
-      }
-    </script>
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-    "@google/genai": "https://esm.sh/@google/genai@1.9.0",
-    "recharts": "https://esm.sh/recharts@2.12.7?bundle-deps",
-    "marked": "https://esm.sh/marked@13.0.1",
-    "dompurify": "https://esm.sh/dompurify@3.1.6",
-    "react-dom/": "https://esm.sh/react-dom@^18.3.1/",
-    "react/": "https://esm.sh/react@^18.3.1/"
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.10.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "vite": "https://esm.sh/vite@^7.0.5",
+    "recharts": "https://esm.sh/recharts@^3.1.0",
+    "dompurify": "https://esm.sh/dompurify@^3.2.6",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.6.0",
+    "marked": "https://esm.sh/marked@^16.0.0"
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-gray-900 text-gray-100">
+  <body class="bg-gray-900 text-gray-100 font-sans">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+    <script type="module" src="/src/index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
