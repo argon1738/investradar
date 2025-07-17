@@ -1,4 +1,4 @@
-import { Stock, PriceDataPoint } from '../src/types'; // Korrigert sti
+import { Stock, PriceDataPoint } from '../src/types';
 
 const fetchJson = async (url: string) => {
     const response = await fetch(url);
