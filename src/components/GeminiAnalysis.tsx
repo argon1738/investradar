@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { generateStockAnalysisStream } from '../services/geminiService';
+import { generateStockAnalysisStream } from '../services/geminiService.ts'; // Endring her
 import { LoadingSpinnerIcon, SparklesIcon, LinkIcon } from './Icons';
 import { GroundingSource } from '../types';
 
