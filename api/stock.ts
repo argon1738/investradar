@@ -1,15 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { Stock, PriceDataPoint } from '../types';
 
-// Interface for a single day's data from Alpha Vantage Time Series
-interface AlphaVantageDailyValue {
-    '1. open': string;
-    '2. high': string;
-    '3. low': string;
-    '4. close': string;
-    '5. volume': string;
-}
-
 const fetchJson = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
@@ -47,15 +38,18 @@ export const handler: Handler = async (event, context) => {
     const BASE_URL = 'https://www.alphavantage.co/query';
 
     try {
-        const [overview, quote, timeSeries] = await Promise.all([
-            fetchJson(`${BASE_URL}?function=OVERVIEW&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`),
-            fetchJson(`${BASE_URL}?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`),
-            fetchJson(`${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${ALPHAVANTAGE_API_KEY}`)
-        ]);
+        // Fetch data sequentially to avoid hitting API rate limits
+        const overview = await fetchJson(`${BASE_URL}?function=OVERVIEW&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`);
+        const quote = await fetchJson(`${BASE_URL}?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`);
+        const timeSeries = await fetchJson(`${BASE_URL}?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${ALPHAVANTAGE_API_KEY}`);
         
         const globalQuote = quote['Global Quote'];
         if (!globalQuote || Object.keys(globalQuote).length === 0) {
-            throw new Error(`No data found for ticker '${ticker}'.`);
+            // Check for rate limit info in the quote response specifically
+            if(quote.Information) {
+                throw new Error(quote.Information);
+            }
+            throw new Error(`No data found for ticker '${ticker}'. It might be an invalid symbol.`);
         }
 
         const stock: Stock = {
@@ -71,11 +65,15 @@ export const handler: Handler = async (event, context) => {
 
         const dailyData = timeSeries['Time Series (Daily)'];
          if (!dailyData) {
+            // Check for rate limit info in the timeSeries response
+            if(timeSeries.Information) {
+                 throw new Error(timeSeries.Information);
+            }
             throw new Error(`Could not fetch historical data for '${ticker}'.`);
         }
 
         const history: PriceDataPoint[] = Object.entries(dailyData)
-            .map(([dateStr, values]: [string, AlphaVantageDailyValue]) => ({
+            .map(([dateStr, values]: [string, any]) => ({
                 date: new Date(dateStr).toLocaleDateString('no-NO', { day: '2-digit', month: 'short' }),
                 price: parseFloat(values['4. close']),
             }))
@@ -89,9 +87,19 @@ export const handler: Handler = async (event, context) => {
 
     } catch (error) {
         console.error("API error:", error);
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        
+        // Provide a more user-friendly message for rate limit errors
+        if (errorMessage.includes('rate limit') || errorMessage.includes('API call frequency')) {
+             return {
+                statusCode: 429, // Too Many Requests
+                body: JSON.stringify({ error: 'API-grensen er nådd. Vennligst vent et minutt og prøv igjen.' }),
+            };
+        }
+
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: error instanceof Error ? error.message : 'An unexpected error occurred.' }),
+            body: JSON.stringify({ error: errorMessage }),
         };
     }
 };
