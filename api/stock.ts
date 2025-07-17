@@ -1,14 +1,17 @@
 import { Stock, PriceDataPoint } from '../types';
 
+// En mer robust hjelpefunksjon som kun sjekker for faktiske feilmeldinger fra API-et.
 const fetchJson = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`API request failed with status ${response.status} for url: ${url}`);
     }
     const data = await response.json();
-    if (data['Error Message'] || data.Information) { // Information key often contains rate limit errors
+    
+    // Sjekker for eksplisitte feilmeldinger fra Alpha Vantage.
+    if (data['Error Message'] || data.Information) {
         const errorMessage = data['Error Message'] || data.Information || 'Invalid API response';
-        // Create a specific error type for rate limiting
+        // Oppretter en spesifikk feiltype for rate limiting for bedre håndtering.
         if (errorMessage.toLowerCase().includes('api call frequency')) {
             const error = new Error(errorMessage);
             error.name = 'RateLimitError';
@@ -16,12 +19,10 @@ const fetchJson = async (url: string) => {
         }
         throw new Error(errorMessage);
     }
-    if (Object.keys(data).length === 0) {
-        throw new Error('Received an empty response from the API.');
-    }
     return data;
 };
 
+// Hjelpefunksjon for å lage standardiserte JSON-svar.
 const jsonResponse = (data: any, status = 200) => {
     return new Response(JSON.stringify(data), {
         headers: { 'Content-Type': 'application/json' },
@@ -54,10 +55,24 @@ export default async (request: Request) => {
             fetchJson(timeSeriesUrl)
         ]);
         
+        // --- Start på forbedrede, spesifikke sjekker ---
+
         const globalQuote = quote['Global Quote'];
         if (!globalQuote || Object.keys(globalQuote).length === 0) {
-            return jsonResponse({ error: `No quote data found for ticker '${ticker}'. It might be an invalid symbol.` }, 404);
+            return jsonResponse({ error: `Ingen kursdata funnet for ticker '${ticker}'. Symbolet kan være ugyldig.` }, 404);
         }
+
+        const dailyData = timeSeries['Time Series (Daily)'];
+        if (!dailyData) {
+            return jsonResponse({ error: `Kunne ikke hente historiske data for '${ticker}'.` }, 404);
+        }
+        
+        // Spesifikk sjekk for selskapsdata, som kan mangle for noen symboler.
+        if (!overview || !overview.Symbol || !overview.Name) {
+            return jsonResponse({ error: `Kunne ikke hente selskapsoversikt for '${ticker}'. Symbolet kan være delistet eller ugyldig.` }, 404);
+        }
+
+        // --- Slutt på forbedrede sjekker ---
 
         const stock: Stock = {
             ticker: overview.Symbol,
@@ -65,15 +80,10 @@ export default async (request: Request) => {
             price: parseFloat(globalQuote['05. price']),
             change: parseFloat(globalQuote['09. change']),
             changePercent: parseFloat(globalQuote['10. change percent'].replace('%', '')),
-            marketCap: parseInt(overview.MarketCapitalization, 10),
-            volume: parseInt(globalQuote['06. volume'], 10),
+            marketCap: parseInt(overview.MarketCapitalization, 10) || 0, // Fallback til 0 hvis data mangler
+            volume: parseInt(globalQuote['06. volume'], 10) || 0, // Fallback til 0
             currency: overview.Currency || 'NOK',
         };
-
-        const dailyData = timeSeries['Time Series (Daily)'];
-        if (!dailyData) {
-            return jsonResponse({ error: `Could not fetch historical data for '${ticker}'.` }, 404);
-        }
 
         const history: PriceDataPoint[] = Object.entries(dailyData)
             .map(([dateStr, values]: [string, any]) => ({
@@ -86,12 +96,12 @@ export default async (request: Request) => {
 
     } catch (error) {
         console.error("API error:", error);
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
         
         if (error instanceof Error && error.name === 'RateLimitError') {
-            return jsonResponse({ error: 'API-grensen er nådd. Vennligst vent et minutt og prøv igjen.' }, 429);
+            return jsonResponse({ error: 'API-grensen for aksjedata er nådd. Vennligst vent ett minutt og prøv igjen.' }, 429);
         }
 
+        const errorMessage = error instanceof Error ? error.message : 'En uventet feil oppstod på serveren.';
         return jsonResponse({ error: errorMessage }, 500);
     }
 };
