@@ -32,7 +32,11 @@ export default async (request: Request) => {
     const ALPHAVANTAGE_API_KEY = process.env.ALPHAVANTAGE_API_KEY;
 
     if (!ALPHAVANTAGE_API_KEY) {
-        return jsonResponse({ error: 'Alpha Vantage API key is not configured on the server.' }, 500);
+        return jsonResponse({ error: 'Alpha Vantage API-nøkkel (ALPHAVANTAGE_API_KEY) er ikke konfigurert på serveren. Vennligst følg instruksjonene i README.md.' }, 500);
+    }
+
+    if (ALPHAVANTAGE_API_KEY.toLowerCase() === 'demo') {
+        return jsonResponse({ error: "Du bruker 'demo'-nøkkelen for Alpha Vantage, som er veldig begrenset. Vennligst skaff en gratis personlig API-nøkkel fra deres nettside for å bruke appen." }, 400);
     }
 
     if (!ticker) {
@@ -53,7 +57,7 @@ export default async (request: Request) => {
         
         const globalQuote = quote['Global Quote'];
         if (!globalQuote || Object.keys(globalQuote).length === 0) {
-            return jsonResponse({ error: `Ingen kursdata funnet for ticker '${ticker}'. Symbolet kan være ugyldig.` }, 404);
+            return jsonResponse({ error: `Ingen kursdata funnet for ticker '${ticker}'. Dette kan skyldes et ugyldig symbol, eller at din Alpha Vantage API-nøkkel er ugyldig eller har nådd sin grense.` }, 404);
         }
         
         const dailyData = timeSeries['Time Series (Daily)'];
