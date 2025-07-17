@@ -1,29 +1,28 @@
-import type { Handler } from '@netlify/functions';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
-export const handler: Handler = async (event, context) => {
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
+const jsonResponse = (data: any, status = 200) => {
+    return new Response(JSON.stringify(data), {
+        headers: { 'Content-Type': 'application/json' },
+        status: status,
+    });
+};
+
+export default async (request: Request) => {
+    if (request.method !== 'POST') {
+        return new Response('Method Not Allowed', { status: 405 });
     }
 
-    const API_KEY = process.env.API_KEY;
+    // Use the correct environment variable name as configured in Netlify
+    const API_KEY = process.env.GEMINI_API_KEY; 
     if (!API_KEY) {
-        return { 
-            statusCode: 500, 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'API key is not configured on the server.' })
-        };
+        return jsonResponse({ error: 'API key is not configured on the server.' }, 500);
     }
 
     try {
-        const { stockName, userQuery } = JSON.parse(event.body || '{}');
+        const { stockName, userQuery } = await request.json();
 
         if (!stockName || !userQuery) {
-            return { 
-                statusCode: 400, 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ error: 'Missing stockName or userQuery in request body.' })
-            };
+            return jsonResponse({ error: 'Missing stockName or userQuery in request body.' }, 400);
         }
 
         const ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -72,19 +71,10 @@ export const handler: Handler = async (event, context) => {
             'X-Content-Type-Options': 'nosniff',
         };
 
-        return {
-            statusCode: 200,
-            headers: headers,
-            body: readableStream as any,
-        };
-
+        return new Response(readableStream, { status: 200, headers });
 
     } catch (error) {
         console.error("Gemini API error in function:", error);
-        return {
-            statusCode: 500, 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: "An error occurred on the server while generating the analysis." })
-        };
+        return jsonResponse({ error: "An error occurred on the server while generating the analysis." }, 500);
     }
 };
