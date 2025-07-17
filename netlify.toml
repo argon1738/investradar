@@ -1,20 +1,18 @@
+# Netlify-konfigurasjonsfil
+
 [build]
-  # This command runs the script from package.json to prepare the site.
+  # Denne kommandoen gjør ingenting, men tilfredsstiller Netlifys krav til en byggekommando.
   command = "npm run build"
   
-  # The directory containing the deploy-ready assets of your site.
-  # This now points to the 'dist' folder created by the build command.
-  publish = "dist"
+  # Mappen som skal publiseres, som er rotmappen til prosjektet.
+  # Dette fikser "Deploy directory 'dist' does not exist"-feilen.
+  publish = "."
+  
+  # Mappen der serverless-funksjonene dine er lokalisert.
+  functions = "api"
 
-  # The directory containing serverless functions remains the same.
-  functions = "api/"
-
-[build.environment]
-  # Lock the Node.js version to a stable LTS version to ensure consistent builds.
-  NODE_VERSION = "20"
-
-# Rewrite rule to proxy API calls to Netlify Functions.
 [[redirects]]
+  # Omdirigerer alle API-kall fra klienten til Netlify-funksjonene.
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
