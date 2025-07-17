@@ -8,14 +8,22 @@ export const handler: Handler = async (event, context) => {
 
     const API_KEY = process.env.API_KEY;
     if (!API_KEY) {
-        return new Response(JSON.stringify({ error: 'API key is not configured on the server.' }), { status: 500, headers: { 'Content-Type': 'application/json' }});
+        return { 
+            statusCode: 500, 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ error: 'API key is not configured on the server.' })
+        };
     }
 
     try {
         const { stockName, userQuery } = JSON.parse(event.body || '{}');
 
         if (!stockName || !userQuery) {
-            return new Response(JSON.stringify({ error: 'Missing stockName or userQuery in request body.' }), { status: 400, headers: { 'Content-Type': 'application/json' }});
+            return { 
+                statusCode: 400, 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ error: 'Missing stockName or userQuery in request body.' })
+            };
         }
 
         const ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -64,14 +72,19 @@ export const handler: Handler = async (event, context) => {
             'X-Content-Type-Options': 'nosniff',
         };
 
-        return new Response(readableStream, {
-            status: 200,
+        return {
+            statusCode: 200,
             headers: headers,
-        });
+            body: readableStream as any,
+        };
 
 
     } catch (error) {
         console.error("Gemini API error in function:", error);
-        return new Response(JSON.stringify({ error: "An error occurred on the server while generating the analysis." }), { status: 500, headers: { 'Content-Type': 'application/json' }});
+        return {
+            statusCode: 500, 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ error: "An error occurred on the server while generating the analysis." })
+        };
     }
 };
